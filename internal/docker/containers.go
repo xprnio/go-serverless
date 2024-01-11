@@ -113,7 +113,7 @@ func addContext(dir, filename string, json string) (mount.Mount, error) {
 }
 
 func CreateContextDir(requestId string) (string, error) {
-	tmp := path.Join(os.TempDir(), "serverless-context", requestId)
+	tmp := path.Join(os.TempDir(), requestId)
 	info, err := os.Stat(tmp)
 	if err == nil {
 		if !info.IsDir() {
