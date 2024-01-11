@@ -25,7 +25,7 @@ curl http://localhost:9999/v1/routes
 ### Creating functions
 ```sh
 curl http://localhost:9999/v1/functions -sd '{
-  "image": "ghcr.io/xprnio/go-serverless/hello-world:latest"
+  "image": "ghcr.io/xprnio/serverless-hello-world:latest"
 }'
 ```
 
