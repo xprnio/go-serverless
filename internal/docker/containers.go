@@ -83,18 +83,24 @@ func CreateContext(opts RunImageOptions) (RunContext, error) {
 		return ctx, err
 	}
 
-	request, err := addContext(dir, "request.json", string(opts.RequestBody))
+	_, err = addContext(dir, "request.json", string(opts.RequestBody))
 	if err != nil {
 		return ctx, err
 	}
 
-	response, err := addContext(dir, "response.json", "{}")
+	_, err = addContext(dir, "response.json", "{}")
 	if err != nil {
 		return ctx, err
 	}
 
 	ctx.Dir = dir
-	ctx.Mounts = []mount.Mount{request, response}
+	ctx.Mounts = []mount.Mount{
+		{
+			Type:   mount.TypeBind,
+			Source: dir,
+			Target: "/context",
+		},
+	}
 
 	return ctx, nil
 }
