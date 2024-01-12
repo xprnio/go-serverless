@@ -1,0 +1,27 @@
+version: "3.7"
+
+services:
+  go-serverless:
+    image: ghcr.io/xprnio/go-serverless
+    build:
+      context: .
+    ports:
+      - 9999:9999
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - serverless_context:/tmp/context
+      - data:/data
+    environment:
+      # The CONTEXT_NAME must be mapped to the CONTEXT_PATH
+      CONTEXT_NAME: serverless_context
+      CONTEXT_PATH: /tmp/context
+
+volumes:
+  # This is the volume which will contain the go-serverless database
+  data:
+
+  # Since docker-compose adds a prefix to internal named volumes,
+  # we declare the serverless context as an external volume
+  # so that it could be mounted to function containers more easily.
+  serverless_context:
+    external: true
