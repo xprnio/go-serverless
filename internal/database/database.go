@@ -16,17 +16,12 @@ func New(name string) (*Database, error) {
 	}
 
 	db := &Database{connection}
-
 	if err := db.migrate(); err != nil {
 		connection.Close()
 		return nil, err
 	}
 
-	return &Database{connection}, nil
-}
-
-type Scannable interface {
-	Scan(dest ...interface{}) error
+	return db, nil
 }
 
 func (d *Database) migrate() error {
