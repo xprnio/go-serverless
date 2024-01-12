@@ -79,7 +79,7 @@ func (m *ContextManager) NewContextWithId(
 
 func (m *ContextManager) prepareContextPath() error {
 	if utils.IsDocker() {
-		// TODO
+		// TODO Verify that ContextPath is mounted to ContextName
 		return nil
 	}
 
