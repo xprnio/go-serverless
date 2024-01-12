@@ -6,26 +6,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/xprnio/go-serverless/internal/server/responses"
 )
 
 func (server *Server) handleRoutesGetAll(c echo.Context) error {
-	routes, err := server.db.GetRoutes()
+	routes, err := server.Database.GetRoutes()
 	if err != nil {
 		return c.JSON(
 			http.StatusInternalServerError,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": true,
-			"data":    routes,
-		},
+		responses.NewResourceResponse(routes),
 	)
 }
 
@@ -34,30 +29,21 @@ func (server *Server) handleRoutesGet(c echo.Context) error {
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	result, err := server.db.GetRoute(id)
+	result, err := server.Database.GetRoute(id)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": false,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }
 
@@ -74,10 +60,7 @@ func (server *Server) handleRoutesCreate(c echo.Context) error {
 	if err := d.Decode(&body); err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
@@ -85,31 +68,22 @@ func (server *Server) handleRoutesCreate(c echo.Context) error {
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	result, err := server.db.CreateRoute(
+	result, err := server.Database.CreateRoute(
 		body.Path,
 		functionId,
 	)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": true,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }

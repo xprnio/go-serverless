@@ -8,26 +8,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/xprnio/go-serverless/internal/database"
+	"github.com/xprnio/go-serverless/internal/docker"
+	"github.com/xprnio/go-serverless/internal/server/responses"
 )
 
 func (server *Server) handleFunctionsGetAll(c echo.Context) error {
-	result, err := server.db.GetFunctions()
+	result, err := server.Database.GetFunctions()
 	if err != nil {
 		return c.JSON(
 			http.StatusInternalServerError,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": true,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }
 
@@ -36,30 +32,21 @@ func (server *Server) handleFunctionsGet(c echo.Context) error {
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	result, err := server.db.GetFunction(id)
+	result, err := server.Database.GetFunction(id)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": false,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }
 
@@ -71,57 +58,42 @@ func (server *Server) handleFunctionsCreate(c echo.Context) error {
 	if err := d.Decode(&body); err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	exists, err := server.docker.ImageExists(body.Image)
+	exists, err := docker.ImageExists(server.Docker, body.Image)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	if !exists {
 		log.Println("pulling image", body.Image)
-		err := server.docker.PullImage(body.Image)
+		err := docker.PullImage(server.Docker, body.Image)
 		if err != nil {
 			return c.JSON(
 				http.StatusBadRequest,
-				map[string]interface{}{
-					"success": false,
-					"message": err.Error(),
-				},
+				responses.NewErrorResponse(err.Error()),
 			)
 		}
 	} else {
 		log.Println("image exists")
 	}
 
-	result, err := server.db.SaveFunction(&body)
+	result, err := server.Database.SaveFunction(&body)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusCreated,
-		map[string]interface{}{
-			"success": false,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }
 
@@ -130,40 +102,28 @@ func (server *Server) handleFunctionsPull(c echo.Context) error {
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	result, err := server.db.GetFunction(id)
+	result, err := server.Database.GetFunction(id)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
-	err = server.docker.PullImage(result.Image)
+	err = docker.PullImage(server.Docker, result.Image)
 	if err != nil {
 		return c.JSON(
 			http.StatusBadRequest,
-			map[string]interface{}{
-				"success": false,
-				"message": err.Error(),
-			},
+			responses.NewErrorResponse(err.Error()),
 		)
 	}
 
 	return c.JSON(
 		http.StatusOK,
-		map[string]interface{}{
-			"success": false,
-			"data":    result,
-		},
+		responses.NewResourceResponse(result),
 	)
 }
