@@ -1,54 +1,67 @@
 package server
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/xprnio/go-serverless/internal/database"
-	"github.com/xprnio/go-serverless/internal/docker"
+	"github.com/docker/docker/client"
 	"github.com/labstack/echo/v4"
+	"github.com/xprnio/go-serverless/internal/database"
+	"github.com/xprnio/go-serverless/internal/runner"
 )
 
 type Server struct {
-	e      *echo.Echo
-	db     *database.Database
-	docker *docker.Client
+	App      *echo.Echo
+	Docker   *client.Client
+	Database *database.Database
+	Manager  *runner.ContextManager
 }
 
 type Options struct {
 	DatabaseName string
-	Port         uint16
 }
 
 func New(opts Options) (*Server, error) {
-	e := echo.New()
+	app := echo.New()
+
 	db, err := database.New(opts.DatabaseName)
-	docker, err := docker.New()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	if err != nil {
 		return nil, err
 	}
 
-	s := &Server{e, db, docker}
-
-	e.GET("/v1/functions", s.handleFunctionsGetAll)
-	e.POST("/v1/functions", s.handleFunctionsCreate)
-	e.POST("/v1/functions/:id/pull", s.handleFunctionsPull)
-
-	e.GET("/v1/routes", s.handleRoutesGetAll)
-	e.GET("/v1/routes/:id", s.handleRoutesGet)
-	e.POST("/v1/routes", s.handleRoutesCreate)
-
-	e.POST("/r/*", s.handleRunner)
-
-	addr := fmt.Sprintf(":%d", opts.Port)
-	if err := e.Start(addr); err != nil {
+	docker, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
 		return nil, err
 	}
+
+	manager, err := runner.NewManager(
+		docker,
+		os.Getenv("CONTEXT_NAME"),
+		os.Getenv("CONTEXT_PATH"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Server{
+		App:      app,
+		Docker:   docker,
+		Database: db,
+		Manager:  manager,
+	}
+
+	app.GET("/v1/functions", s.handleFunctionsGetAll)
+	app.POST("/v1/functions", s.handleFunctionsCreate)
+	app.POST("/v1/functions/:id/pull", s.handleFunctionsPull)
+
+	app.GET("/v1/routes", s.handleRoutesGetAll)
+	app.GET("/v1/routes/:id", s.handleRoutesGet)
+	app.POST("/v1/routes", s.handleRoutesCreate)
+
+	app.POST("/r/*", s.handleRunner)
 
 	return s, nil
+}
+
+func (s *Server) Start(addr string) error {
+	return s.App.Start(addr)
 }

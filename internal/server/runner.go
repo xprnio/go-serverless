@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/xprnio/go-serverless/internal/context"
-	"github.com/xprnio/go-serverless/internal/runner"
 	"github.com/labstack/echo/v4"
+	"github.com/xprnio/go-serverless/internal/runner"
 	"github.com/xprnio/go-serverless/internal/server/responses"
 )
 
 func (server *Server) handleRunner(c echo.Context) error {
 	req := c.Request()
 	path := strings.TrimPrefix(req.URL.Path, "/r")
-	route, err := server.db.GetRouteByPath(path)
+
+	route, err := server.Database.GetRouteByPath(path)
 	if err != nil {
 		return c.JSON(
 			http.StatusNotFound,
@@ -30,7 +30,6 @@ func (server *Server) handleRunner(c echo.Context) error {
 		)
 	}
 
-	ctx, err := context.New(buf.Bytes())
 	if err != nil {
 		return c.JSON(
 			http.StatusInternalServerError,
@@ -38,13 +37,33 @@ func (server *Server) handleRunner(c echo.Context) error {
 		)
 	}
 
-	runner := runner.NewRunner(server.docker, route.Function)
-	resp, err := runner.RunRequest(ctx)
+	ctx, err := server.Manager.NewContext(
+		route.Function.Image,
+		buf.Bytes(),
+	)
 	if err != nil {
 		return c.JSON(
 			http.StatusInternalServerError,
 			responses.NewErrorResponse(err.Error()),
 		)
 	}
+
+	runner, err := runner.New(server.Docker, route.Function)
+	if err != nil {
+		return c.JSON(
+			http.StatusInternalServerError,
+			responses.NewErrorResponse(err.Error()),
+		)
+	}
+
+	resp, err := runner.Run(ctx)
+	if err != nil {
+		return c.JSON(
+			http.StatusInternalServerError,
+			responses.NewErrorResponse(err.Error()),
+		)
+	}
+
+	// TODO: Handle function-level errors and status codes
 	return c.JSONBlob(http.StatusOK, resp)
 }
