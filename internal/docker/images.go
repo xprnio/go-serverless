@@ -2,30 +2,19 @@ package docker
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/registry"
-	pkg "github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/client"
 )
 
-type BuildImageOptions struct {
-	Tags    []string
-	Context string
-}
-
-type DockerStream struct {
-	Content string `json:"stream"`
-}
-
-func (c *Client) splitImageName(name string) (string, string) {
+func splitImageName(name string) (string, string) {
 	parts := strings.SplitN(name, ":", 2)
 
 	if len(parts) == 1 {
@@ -35,15 +24,15 @@ func (c *Client) splitImageName(name string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (c *Client) ImageExists(name string) (bool, error) {
+func ImageExists(client *client.Client, name string) (bool, error) {
 	ctx := context.Background()
 	opts := types.ImageListOptions{}
-	images, err := c.client.ImageList(ctx, opts)
+	images, err := client.ImageList(ctx, opts)
 	if err != nil {
 		return false, nil
 	}
 
-	imageName, imageTag := c.splitImageName(name)
+	imageName, imageTag := splitImageName(name)
 	for _, image := range images {
 		for _, tag := range image.RepoTags {
 			if tag == fmt.Sprintf("%s:%s", imageName, imageTag) {
@@ -55,7 +44,8 @@ func (c *Client) ImageExists(name string) (bool, error) {
 	return false, nil
 }
 
-func (c *Client) PullImageAuthenticated(
+func PullImageAuthenticated(
+	client *client.Client,
 	name string,
 	auth registry.AuthConfig,
 ) error {
@@ -64,72 +54,31 @@ func (c *Client) PullImageAuthenticated(
 		return err
 	}
 
-	r, err := c.client.ImagePull(
-		context.Background(), name,
-		types.ImagePullOptions{
-			RegistryAuth: base64.URLEncoding.EncodeToString(enc),
-		},
-	)
+	opts := types.ImagePullOptions{
+		RegistryAuth: base64.URLEncoding.EncodeToString(enc),
+	}
+	return pullImage(client, name, opts)
+}
+
+func PullImage(client *client.Client, name string) error {
+	return pullImage(client, name, types.ImagePullOptions{})
+}
+
+func pullImage(
+	client *client.Client,
+	name string,
+	opts types.ImagePullOptions,
+) error {
+	r, err := client.ImagePull(context.Background(), name, opts)
 	if err != nil {
 		return err
 	}
+	defer r.Close()
 
 	s := bufio.NewScanner(r)
-	defer r.Close()
 	for s.Scan() {
 		log.Println(s.Text())
 	}
+
 	return nil
-}
-
-func (c *Client) PullImage(name string) error {
-	r, err := c.client.ImagePull(
-		context.Background(), name,
-		types.ImagePullOptions{
-			RegistryAuth: "",
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	s := bufio.NewScanner(r)
-	defer r.Close()
-	for s.Scan() {
-		log.Println(s.Text())
-	}
-	return nil
-}
-
-func (c *Client) BuildImage(opts BuildImageOptions) (io.Reader, error) {
-	tar, err := pkg.TarWithOptions(
-		opts.Context,
-		&pkg.TarOptions{},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.client.ImageBuild(
-		context.Background(), tar,
-		types.ImageBuildOptions{
-			Dockerfile: "Dockerfile",
-			Tags:       opts.Tags,
-		},
-	)
-	defer resp.Body.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	buf := bytes.NewBuffer(nil)
-	scanner := bufio.NewScanner(resp.Body)
-	for scanner.Scan() {
-		var stream DockerStream
-		json.Unmarshal(scanner.Bytes(), &stream)
-		buf.WriteString(stream.Content)
-	}
-
-	return bufio.NewReader(buf), nil
 }
