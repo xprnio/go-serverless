@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -51,8 +52,24 @@ func AttachContainer(
 	return client.ContainerAttach(
 		ctx, containerId,
 		types.ContainerAttachOptions{
+			Stdout: true,
 			Stderr: true,
 			Stream: true,
+		},
+	)
+}
+
+func ReadLogs(
+	client *client.Client,
+	containerId string,
+) (io.ReadCloser, error) {
+	ctx := context.Background()
+	return client.ContainerLogs(
+		ctx, containerId,
+		types.ContainerLogsOptions{
+			Follow:     true,
+			ShowStdout: true,
+			ShowStderr: true,
 		},
 	)
 }

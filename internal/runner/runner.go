@@ -30,13 +30,13 @@ func (r *Runner) Run(ctx *Context) ([]byte, error) {
 		return nil, err
 	}
 
-	resp, err := docker.AttachContainer(r.Docker, container.ID)
+	reader, err := docker.ReadLogs(r.Docker, container.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Implement proper function logging
-	scanner := bufio.NewScanner(resp.Reader)
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		log.Println(scanner.Text())
 	}
