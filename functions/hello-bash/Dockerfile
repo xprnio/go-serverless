@@ -1,7 +1,7 @@
 FROM alpine
 WORKDIR /app
 
-RUN apk add bash jq
+RUN apk add jq
 ADD entrypoint.sh /app
 
-ENTRYPOINT ["bash", "/app/entrypoint.sh"]
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
