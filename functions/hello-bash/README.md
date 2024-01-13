@@ -1,5 +1,5 @@
 # Hello World function
-This is an example function that runs in a `node:alpine` container.
+This is an example function written in bash that runs in an `alpine` container.
 
 When calling this function, the following request body is expected:
 ```json
